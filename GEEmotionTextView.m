@@ -19,10 +19,12 @@ static NSString* kEmotionImageKey = @"kEmotionImageKey";
     float _oneHanZiWidth;
     float _oneHanZiHeight;
     float _maxWidth;
+    BOOL _trueDraw;
+    float _contentHeight;
 }
 @property (copy, nonatomic) NSString* pattern;
 @property (strong, nonatomic) NSDictionary* textAttributes;
-@property (strong, nonatomic) NSMutableArray* emotionViews;
+@property (strong, nonatomic) NSMutableSet* emotionViews;
 
 //表情文字分离程序
 -(NSArray*)sectionsAfterAnalyzeString:(NSString*)string withPattern:(NSString*)pattern;
@@ -43,24 +45,15 @@ static NSString* kEmotionImageKey = @"kEmotionImageKey";
         self.backgroundColor = [UIColor clearColor];
         self.pattern = @"\\[(\\w){1,4}]";//以“[]”标识表情文字
         _rowInterval = 0.0f;
+        _characterInterval = 1.0f;
         self.emotionString = @"";//default value
-        self.font = [UIFont fontWithName:@"Helvetica-light" size:15.0];
+        self.font = [UIFont systemFontOfSize:15.0f];
         self.textColor = [UIColor blackColor];
         self.heightAutosizing = YES;
-        _emotionViews = [NSMutableArray new];
+        _emotionViews = [NSMutableSet new];
+        _trueDraw = YES;
     }
     return self;
-}
-
--(void)willMoveToSuperview:(UIView *)newSuperview
-{
-    if (self.superview == nil) {
-        self.textAttributes = @{NSFontAttributeName:self.font,NSForegroundColorAttributeName:self.textColor,};
-        NSString* oneHanZi = @"字";//表情是一个汉字高度
-        _oneHanZiWidth = [oneHanZi sizeWithAttributes:self.textAttributes].width;
-        _oneHanZiHeight = [oneHanZi sizeWithAttributes:self.textAttributes].height;
-        _maxWidth = self.bounds.size.width;
-    }
 }
 
 -(void)setEmotionString:(NSString *)emotionString
@@ -73,15 +66,16 @@ static NSString* kEmotionImageKey = @"kEmotionImageKey";
         }
         [self setNeedsDisplay];
     }
-    
 }
 
 -(void)sizeToFit
 {
-    CGSize size = [self.emotionString sizeWithAttributes:self.textAttributes];
-    NSInteger rowCount = ceilf(size.width / _maxWidth);
+    _trueDraw = NO;
+    [self drawRect:CGRectZero];
+    _trueDraw = YES;
+    
     CGRect frame = self.frame;
-    frame.size.height = (rowCount + 1) * (_oneHanZiHeight + _rowInterval);
+    frame.size.height = _contentHeight;
     self.frame = frame;
 }
 
@@ -146,10 +140,15 @@ static NSString* kEmotionImageKey = @"kEmotionImageKey";
     return textRows;
 }
 
-// Only override drawRect: if you perform custom drawing.
-// An empty implementation adversely affects performance during animation.
 - (void)drawRect:(CGRect)rect
 {
+    // init
+    self.textAttributes = @{NSFontAttributeName:self.font,NSForegroundColorAttributeName:self.textColor,};
+    NSString* oneHanZi = @"字";//表情是一个汉字高度
+    _oneHanZiWidth = [oneHanZi sizeWithAttributes:self.textAttributes].width;
+    _oneHanZiHeight = [oneHanZi sizeWithAttributes:self.textAttributes].height;
+    _maxWidth = self.bounds.size.width;
+    
     for (UIView* view in _emotionViews) {
         [view removeFromSuperview];
     }
@@ -168,7 +167,9 @@ static NSString* kEmotionImageKey = @"kEmotionImageKey";
                     
                     CGPoint pointOneRow = [[aTextRow objectAtIndex:0] CGPointValue];
                     NSString* textOneRow = [aTextRow objectAtIndex:1];
-                    [textOneRow drawAtPoint:pointOneRow withAttributes:_textAttributes];
+                    if (_trueDraw) {
+                        [textOneRow drawAtPoint:pointOneRow withAttributes:_textAttributes];
+                    }
                     point.x = [[aTextRow objectAtIndex:2] floatValue];
                     
                 }
@@ -184,18 +185,22 @@ static NSString* kEmotionImageKey = @"kEmotionImageKey";
                 UIImage* image = [UIImage imageNamed:textOrImageName];
                 [image drawInRect:CGRectMake(point.x, point.y, _oneHanZiHeight, _oneHanZiHeight)];//表情正方形
                 */
-                GEGifView* emotionView = [GEGifView new];
-                emotionView.frameItems = [GEEmotionCache objectForKey:textOrImageName];
-                emotionView.bounds = CGRectMake(0, 0, _oneHanZiHeight, _oneHanZiHeight);
-                emotionView.center = CGPointMake(point.x + _oneHanZiHeight / 2.0, point.y + _oneHanZiHeight / 2.0);
-                [self addSubview:emotionView];
-                [_emotionViews addObject:emotionView];
-                [emotionView start];
+                if (_trueDraw) {
+                    GEGifView* emotionView = [GEGifView new];
+                    emotionView.frameItems = [GEEmotionCache objectForKey:textOrImageName];
+                    emotionView.bounds = CGRectMake(0, 0, _oneHanZiHeight, _oneHanZiHeight);
+                    emotionView.center = CGPointMake(point.x + _oneHanZiHeight / 2.0, point.y + _oneHanZiHeight / 2.0);
+                    [self addSubview:emotionView];
+                    [_emotionViews addObject:emotionView];
+                    [emotionView start];
+                }
                 
-                point.x += _oneHanZiHeight+2;
+                point.x += _oneHanZiHeight + _characterInterval;
             }
         }];
     }//end for
+    
+    _contentHeight = point.y + _oneHanZiHeight + _rowInterval;
 }
 
 @end

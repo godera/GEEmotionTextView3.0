@@ -25,6 +25,14 @@
  }
  _desc.emotionString = describeValue;
  */
+#define DEBUG_SWITCH_EmotionTextView 1
+
+#if DEBUG_SWITCH_EmotionTextView
+    #define GELOG_ETV NSLog
+#else
+    #define GELOG_ETV(...)
+#endif
+
 #import <UIKit/UIKit.h>
 
 @interface GEEmotionTextView : UIView
@@ -34,6 +42,7 @@
 @property (copy, nonatomic) NSString* emotionString;
 @property (assign, nonatomic) BOOL heightAutosizing;
 @property (assign, nonatomic) float rowInterval;
+@property (assign, nonatomic) float characterInterval;
 
 //not exact.use below addSubview:
 -(void)sizeToFit;
