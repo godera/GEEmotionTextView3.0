@@ -44,7 +44,6 @@
 @property (assign, nonatomic) float rowInterval;
 @property (assign, nonatomic) float characterInterval;
 
-//not exact.use below addSubview:
 -(void)sizeToFit;
 
 @end
